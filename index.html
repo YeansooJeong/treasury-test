@@ -378,7 +378,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 </head>
 <body>
 <!-- ⚠ 테스트 환경 배너 -->
-<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:5px;letter-spacing:0.03em;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:5px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
   ⚠ 테스트 환경 | TEST-MASTER-2026 / TEST-CEO-2026 / TEST-AI/HC/MD-2026
 </div>
 <div style="height:27px;"></div>
@@ -1968,11 +1968,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saved) {
       try {
         currentUser = JSON.parse(saved);
-        applyAccessControl(currentUser);
-      } catch(e) { sessionStorage.removeItem('treasury_user'); }
+        applyAccessControl(currentUser); // 내부에서 setCompany 호출
+      } catch(e) {
+        sessionStorage.removeItem('treasury_user');
+        // 세션 오류 시에만 기본 초기화
+        setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
+      }
+    } else {
+      // 로그인 전 상태: 대시보드 탭만 초기화 (로그인 오버레이 표시 중)
+      setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
     }
     refreshFX();
-    setCompany('셀바스에이아이', document.querySelector('.ci-tab'));
   });
 });
 
@@ -2055,46 +2061,101 @@ function syncCompanySelect(selectId) {
 
 // 메뉴 이동 충돌 방지 로직 고도화
 function goto(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const targetPage = document.getElementById('page-' + page);
-  if (!targetPage) { console.warn('goto: page-' + page + ' 없음'); return; }
+  // ── 1. 모든 페이지 비활성화 ──────────────────────────────
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+
+  // ── 2. 타겟 페이지 활성화 ────────────────────────────────
+  var targetPage = document.getElementById('page-' + page);
+  if (!targetPage) {
+    console.warn('[goto] 페이지 div 없음: page-' + page);
+    return;
+  }
   targetPage.classList.add('active');
-  
-  // 사이드바 해당 항목 활성화
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => {
-    const oc = n.getAttribute('onclick');
-    if(oc && oc.includes(`goto('${page}')`)) {
-        n.classList.add('active');
-        document.getElementById('page-title').textContent = n.textContent.trim();
+
+  // ── 3. 사이드바 활성화 + 타이틀 ─────────────────────────
+  var pageTitleSet = false;
+  document.querySelectorAll('.nav-item').forEach(function(n) {
+    var oc = n.getAttribute('onclick') || '';
+    if (oc.indexOf("goto('" + page + "')") !== -1) {
+      n.classList.add('active');
+      if (!pageTitleSet) {
+        var titleEl = document.getElementById('page-title');
+        if (titleEl) titleEl.textContent = n.textContent.trim();
+        pageTitleSet = true;
+      }
     }
   });
-  
-  // 드롭박스를 현재 currentCompany에 맞춤
-  ['i-company','v-company','l-company','e-company'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && currentCompany && currentCompany !== 'TOTAL') el.value = currentCompany;
-  });
 
-  if(page === 'dashboard')    { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => renderDashboard()); }
-  if(page === 'input')        { DB.load('daily').catch(()=>{}).then(() => renderDailyHistory(1)); }
-  if(page === 'equity')       { DB.load('equities').catch(()=>{}).then(() => renderEquity()); }
-  if(page === 'history')      { Promise.allSettled([DB.load('daily'),DB.load('investments'),DB.load('loans'),DB.load('equities')]).then(() => filterHistory()); }
-  if(page === 'invest')       { DB.load('investments').catch(()=>{}).then(() => renderInvestments()); }
-  if(page === 'fx')           renderFXEquivTable();
-  if(page === 'loans')        { DB.load('loans').catch(()=>{}).then(() => renderLoans()); }
-  if(page === 'admin-users')  adminLoadUsers();
-  if(page === 'admin-data')   adminCheckStatus();
-  if(page === 'admin-mycode') {
-    ['admin-current-code','admin-new-code','admin-new-code2'].forEach(function(id) {
+  // ── 4. 드롭박스 동기화 ───────────────────────────────────
+  if (currentCompany && currentCompany !== 'TOTAL') {
+    ['i-company','v-company','l-company','e-company'].forEach(function(id) {
       var el = document.getElementById(id);
-      if (el) el.value = '';
+      if (el) el.value = currentCompany;
     });
-    var errEl = document.getElementById('admin-code-error');
-    if (errEl) errEl.style.display = 'none';
-    var strEl = document.getElementById('admin-code-strength');
-    if (strEl) strEl.textContent = '';
+  }
+
+  // ── 5. 페이지별 데이터 로드 + 렌더 (try-catch로 안전하게) ─
+  try {
+    if (page === 'dashboard') {
+      Promise.allSettled([
+        DB.load('daily'), DB.load('investments'),
+        DB.load('loans'), DB.load('equities')
+      ]).then(function() { try { renderDashboard(); } catch(e) { console.error('renderDashboard:', e); } });
+    }
+    else if (page === 'input') {
+      DB.load('daily').catch(function(){}).then(function() {
+        try { renderDailyHistory(1); } catch(e) { console.error('renderDailyHistory:', e); }
+      });
+    }
+    else if (page === 'invest') {
+      DB.load('investments').catch(function(){}).then(function() {
+        try { renderInvestments(); } catch(e) { console.error('renderInvestments:', e); }
+      });
+    }
+    else if (page === 'loans') {
+      DB.load('loans').catch(function(){}).then(function() {
+        try { renderLoans(); } catch(e) { console.error('renderLoans:', e); }
+      });
+    }
+    else if (page === 'equity') {
+      DB.load('equities').catch(function(){}).then(function() {
+        try { renderEquity(); } catch(e) { console.error('renderEquity:', e); }
+      });
+    }
+    else if (page === 'history') {
+      Promise.allSettled([
+        DB.load('daily'), DB.load('investments'),
+        DB.load('loans'), DB.load('equities')
+      ]).then(function() { try { filterHistory(); } catch(e) { console.error('filterHistory:', e); } });
+    }
+    else if (page === 'fx') {
+      try { renderFXEquivTable(); } catch(e) { console.error('renderFXEquivTable:', e); }
+    }
+    else if (page === 'policy') {
+      /* 개발 예정 — 렌더 함수 없음, 빈 화면 방지용 */
+    }
+    else if (page === 'report') {
+      /* 개발 예정 — 렌더 함수 없음, 빈 화면 방지용 */
+    }
+    else if (page === 'admin-mycode') {
+      ['admin-current-code','admin-new-code','admin-new-code2'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      var errEl = document.getElementById('admin-code-error');
+      if (errEl) errEl.style.display = 'none';
+      var strEl = document.getElementById('admin-code-strength');
+      if (strEl) strEl.textContent = '';
+    }
+    else if (page === 'admin-users') {
+      try { adminLoadUsers(); } catch(e) { console.error('adminLoadUsers:', e); }
+    }
+    else if (page === 'admin-data') {
+      try { adminCheckStatus(); } catch(e) { console.error('adminCheckStatus:', e); }
+    }
+  } catch(e) {
+    console.error('[goto] 렌더 오류 (page=' + page + '):', e);
   }
 }
 
