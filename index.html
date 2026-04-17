@@ -9,7 +9,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Selvas Treasury — 통합자금관리</title>
+<title>[TEST] Selvas Treasury</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
 
@@ -377,12 +377,11 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 </style>
 </head>
 <body>
-<!-- 테스트 환경 알림 배너 -->
-<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(245,158,11,0.9);color:#000;text-align:center;font-size:12px;font-weight:600;padding:4px;font-family:Arial;">
-  ⚠ 테스트 환경입니다 — 실제 운영 데이터에 영향을 주지 않습니다
+<!-- ⚠ 테스트 환경 배너 -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:5px;letter-spacing:0.03em;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+  ⚠ 테스트 환경 | TEST-MASTER-2026 / TEST-CEO-2026 / TEST-AI/HC/MD-2026
 </div>
-<div style="height:24px;"></div>
-
+<div style="height:27px;"></div>
 
 <!-- 코드 변경 모달 -->
 <div id="code-change-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;align-items:center;justify-content:center;">
@@ -478,7 +477,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="co" onclick="goto('dashboard')">SELVAS</div>
-      <div class="name">Treasury <span style='color:var(--amber);font-size:10px;'>TEST</span></div>
+      <div class="name">Treasury <span style="color:var(--amber);font-size:10px;font-weight:700;background:rgba(245,158,11,0.2);padding:1px 5px;border-radius:3px;">TEST</span></div>
       <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI" onerror="this.style.display='none'"></div>
     </div>
 
@@ -1348,9 +1347,7 @@ function showToast(msg, type='') { const t = document.getElementById('toast'); t
 // ══════════════════════════════════════════════════════
 // Supabase 연동 설정
 // ══════════════════════════════════════════════════════
-// ⚠ 테스트 환경 — 새 Supabase 프로젝트의 URL과 Key로 교체하세요
-// Supabase 대시보드 → 프로젝트 선택 → Settings → API 에서 확인
-const SUPABASE_URL = 'dpvfepthmcljrvyxfjpk.supabase.co';
+const SUPABASE_URL = 'https://dpvfepthmcljrvyxfjpk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwdmZlcHRobWNsanJ2eXhmanBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNDQzMjUsImV4cCI6MjA5MTkyMDMyNX0.sn8vuxTDz_tU2YCFMWdACFmYOX430__D2mLDZYGTYF8';
 const SB_HEADERS = {
   'apikey': SUPABASE_KEY,
@@ -1921,6 +1918,8 @@ function applyAccessControl(user) {
   const firstTab   = document.querySelector('.ci-tab:not([style*="none"])');
   const initCompany = user.role === 'company' ? user.company : '셀바스에이아이';
   setCompany(initCompany, firstTab);
+  // 모바일 바 동기화 (래핑 없이 직접 호출)
+  updateMobileCompanyBar(user);
 }
 function doLogout() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -2000,7 +1999,13 @@ function setCompany(comp, btnEl) {
       if (el) el.value = comp;
     });
   }
-  renderDashboard(); renderInvestments(); renderLoans(); renderEquity(); filterHistory(); renderDailyHistory(1);
+  // 각 렌더 함수를 try-catch로 감싸서 한 함수 오류가 나머지를 막지 않도록
+  try { renderDashboard(); } catch(e) { console.error('renderDashboard 오류:', e); }
+  try { renderInvestments(); } catch(e) { console.error('renderInvestments 오류:', e); }
+  try { renderLoans(); } catch(e) { console.error('renderLoans 오류:', e); }
+  try { renderEquity(); } catch(e) { console.error('renderEquity 오류:', e); }
+  try { filterHistory(); } catch(e) { console.error('filterHistory 오류:', e); }
+  try { renderDailyHistory(1); } catch(e) { console.error('renderDailyHistory 오류:', e); }
 }
 
 function getFiltered(table) {
@@ -2048,12 +2053,15 @@ function syncCompanySelect(selectId) {
 function goto(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const targetPage = document.getElementById('page-' + page);
+  if (!targetPage) { console.warn('goto: page-' + page + ' 없음'); return; }
+  targetPage.classList.add('active');
   
   // 사이드바 해당 항목 활성화
   const navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(n => {
-    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
+    const oc = n.getAttribute('onclick');
+    if(oc && oc.includes(`goto('${page}')`)) {
         n.classList.add('active');
         document.getElementById('page-title').textContent = n.textContent.trim();
     }
@@ -3005,8 +3013,17 @@ async function importDataFromJSON() {
 
     const tables = ['daily','investments','loans','equities','price_history'];
     for (const table of tables) {
-      if (data[table]) {
-        await DB.set(table, data[table]);
+      if (!data[table] || !data[table].length) continue;
+      // 기존 데이터 전체 삭제 후 복원
+      const sbT = {'daily':'daily','investments':'investments','loans':'loans','equities':'equities','price_history':'price_history'}[table];
+      await sbFetch('/rest/v1/' + sbT + '?id=not.is.null', { method: 'DELETE' });
+      _cache[table] = [];
+      // 50건씩 배치 INSERT
+      for (let i = 0; i < data[table].length; i += 50) {
+        const batch = data[table].slice(i, i + 50);
+        for (const item of batch) {
+          await DB.append(table, item);
+        }
       }
     }
 
@@ -5010,12 +5027,7 @@ function mobileSwitchCompany(company, el) {
   setCompany(company, tab);
 }
 
-// applyAccessControl 후 모바일 UI 동기화
-const _origApply = applyAccessControl;
-applyAccessControl = function(user) {
-  _origApply(user);
-  updateMobileCompanyBar(user);
-};
+// updateMobileCompanyBar는 applyAccessControl 내부에서 직접 호출됨 (아래 참조)
 
 // 모바일 회사 선택 바 표시 제어 — 단독 함수로 분리
 function updateMobileCompanyBar(user) {
