@@ -767,14 +767,18 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
             <span class="card-title" style="margin:0;">지분투자 평가 추이</span>
-            <div style="display:flex;gap:3px;">
-              <button class="btn btn-ghost eq-period-btn active" onclick="setEquityPeriod(14,this)" style="padding:3px 8px;font-size:10px;">14일</button>
-              <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
-              <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
-              <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select id="dash-equity-filter" onchange="onEquityFilterChange()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">
+                <option value="">전체 종목</option>
+              </select>
+              <div style="display:flex;gap:3px;">
+                <button class="btn btn-ghost eq-period-btn active" onclick="setEquityPeriod(14,this)" style="padding:3px 8px;font-size:10px;">14일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(30,this)" style="padding:3px 8px;font-size:10px;">30일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(90,this)" style="padding:3px 8px;font-size:10px;">90일</button>
+                <button class="btn btn-ghost eq-period-btn" onclick="setEquityPeriod(365,this)" style="padding:3px 8px;font-size:10px;">1년</button>
+              </div>
             </div>
           </div>
-          <div id="equity-stock-btns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;"></div>
           <div class="chart-area" style="height:220px;"><canvas id="equityChart"></canvas></div>
         </div>
       </div>
@@ -4483,7 +4487,7 @@ async function adminLoadUsers() {
   if (loading) loading.style.display = '';
   if (wrap) wrap.style.display = 'none';
   try {
-    const codes = await sbFetch('/rest/v1/access_codes?order=created_at.asc');
+    const codes = await sbFetch('/rest/v1/access_codes?deleted_at=is.null&order=created_at.asc');
     if (!codes) throw new Error('조회 실패');
     window._adminCodesList = codes;
     if (loading) loading.style.display = 'none';
@@ -4765,29 +4769,20 @@ async function runSelectiveReset() {
 // ══════════════════════════════════════════════════════════════
 // S-01: 계정 삭제 + 삭제 로그
 // ══════════════════════════════════════════════════════════════
+// ── 소프트 딜리트: deleted_at PATCH ──────────────────────
 async function adminDeleteUser(idx) {
   const c = (window._adminCodesList || [])[parseInt(idx)];
   if (!c) return;
   if (c.role === 'master') { showToast('Master 계정은 삭제할 수 없습니다', 'error'); return; }
-  if (!confirm(`[${c.label}] 계정을 영구 삭제합니다.
-삭제 후 복구 불가능합니다. 계속하시겠습니까?`)) return;
+  if (currentUser && c.id === currentUser.sb_id) { showToast('본인 계정은 삭제할 수 없습니다', 'error'); return; }
+  if (!confirm('[' + (c.label||c.user_name) + '] 계정을 삭제합니다.\n삭제된 계정은 하단 로그에서 확인할 수 있습니다.\n계속하시겠습니까?')) return;
 
-  // 삭제 로그 먼저 저장
-  const logRow = {
-    deleted_user_name: c.label || c.user_name,
-    deleted_code: c.access_code,
-    deleted_role: c.role,
-    deleted_company: c.company || '',
-    deleted_by: (currentUser && (currentUser.label || currentUser.role)) || 'Master',
-  };
-  await sbFetch('/rest/v1/access_code_logs', {
-    method: 'POST',
-    body: JSON.stringify(logRow),
-    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+  // 소프트 딜리트: deleted_at에 현재 시각 PATCH
+  const now = new Date().toISOString();
+  const res = await sbFetch('/rest/v1/access_codes?id=eq.' + c.id, {
+    method: 'PATCH',
+    body: JSON.stringify({ deleted_at: now, is_active: false }),
   });
-
-  // 계정 삭제
-  const res = await sbFetch('/rest/v1/access_codes?id=eq.' + c.id, { method: 'DELETE' });
   if (res !== null) {
     showToast((c.label||c.user_name) + ' 계정 삭제 완료', 'success');
     adminLoadUsers();
@@ -4796,21 +4791,26 @@ async function adminDeleteUser(idx) {
   }
 }
 
+// 삭제된 계정 로그: deleted_at=not.is.null 조회
 async function adminLoadDeleteLogs() {
   const wrap = document.getElementById('admin-delete-logs-wrap');
   if (!wrap) return;
-  const data = await sbFetch('/rest/v1/access_code_logs?order=deleted_at.desc&limit=50');
+  const data = await sbFetch('/rest/v1/access_codes?deleted_at=not.is.null&order=deleted_at.desc&limit=50');
   if (!data || !data.length) {
     wrap.innerHTML = '<p style="font-size:12px;color:var(--text3);">삭제 이력이 없습니다.</p>';
     return;
   }
   wrap.innerHTML = '<div class="table-wrap"><table>' +
-    '<thead><tr><th>삭제일시</th><th>사용자명</th><th>역할</th><th>법인</th><th>삭제처리자</th></tr></thead>' +
-    '<tbody>' + data.map(r =>
-      `<tr><td style="font-size:11px;">${(r.deleted_at||'').slice(0,16).replace('T',' ')}</td>` +
-      `<td>${r.deleted_user_name||''}</td><td>${r.deleted_role||''}</td>` +
-      `<td style="font-size:11px;">${r.deleted_company||''}</td><td style="font-size:11px;">${r.deleted_by||''}</td></tr>`
-    ).join('') + '</tbody></table></div>';
+    '<thead><tr><th>삭제일시</th><th>사용자명</th><th>접속코드</th><th>역할</th><th>법인</th></tr></thead>' +
+    '<tbody>' + data.map(function(r) {
+      return '<tr>' +
+        '<td style="font-size:11px;">' + (r.deleted_at||'').slice(0,16).replace('T',' ') + '</td>' +
+        '<td>' + (r.label||r.user_name||'') + '</td>' +
+        '<td style="font-size:11px;color:var(--text3);">' + (r.access_code||'') + '</td>' +
+        '<td>' + (r.role||'') + '</td>' +
+        '<td style="font-size:11px;">' + (r.company||'—') + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table></div>';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4831,25 +4831,30 @@ function setEquityPeriod(days, btn) {
 }
 
 function setEquityStock(name, btn) {
-  equityChartStock = (equityChartStock === name) ? null : name; // 토글
-  document.querySelectorAll('.eq-stock-btn').forEach(b => b.classList.remove('active'));
-  if (equityChartStock && btn) btn.classList.add('active');
+  equityChartStock = (equityChartStock === name) ? null : name;
+  // 드롭다운 동기화
+  const sel = document.getElementById('dash-equity-filter');
+  if (sel) sel.value = equityChartStock || '';
   const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
   updateEquityChart(allEq);
 }
 
+// 드롭다운 종목 목록 동적 업데이트
 function renderEquityStockBtns(allEq) {
-  const container = document.getElementById('equity-stock-btns');
-  if (!container) return;
-  // 종목명 목록 추출
+  const sel = document.getElementById('dash-equity-filter');
+  if (!sel) return;
   const names = [...new Set(allEq.map(e => e.name))];
-  if (!names.length) { container.style.display='none'; return; }
-  container.style.display = 'flex';
-  container.innerHTML =
-    `<button class="btn btn-ghost eq-stock-btn${!equityChartStock?' active':''}" onclick="setEquityStock(null,this)" style="padding:2px 8px;font-size:10px;">전체</button>` +
-    names.map(n =>
-      `<button class="btn btn-ghost eq-stock-btn${equityChartStock===n?' active':''}" onclick="setEquityStock('${n.replace(/'/g,"\'")}',this)" style="padding:2px 8px;font-size:10px;color:var(--pink);">${n}</button>`
-    ).join('');
+  // 현재 선택값 보존
+  const curVal = equityChartStock || '';
+  sel.innerHTML = '<option value="">전체 종목</option>' +
+    names.map(n => '<option value="' + n + '"' + (n === curVal ? ' selected' : '') + '>' + n + '</option>').join('');
+}
+
+function onEquityFilterChange() {
+  const sel = document.getElementById('dash-equity-filter');
+  equityChartStock = sel ? (sel.value || null) : null;
+  const allEq = getFiltered('equities').sort((a,b)=>a.date.localeCompare(b.date));
+  updateEquityChart(allEq);
 }
 
 // ══════════════════════════════════════════════════════════════
