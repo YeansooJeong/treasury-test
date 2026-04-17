@@ -126,10 +126,10 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 10px 12px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+  th { text-align: left; padding: 9px 10px; color: var(--text3); font-size: 11px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
   tr:hover td { background: rgba(255,255,255,.02); }
   .td-num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -578,6 +578,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
         <div class="fx-row"><span class="fx-label">EUR</span><span class="fx-val" id="sf-eur">—</span></div>
         <div class="fx-row"><span class="fx-label">JPY</span><span class="fx-val" id="sf-jpy">—</span></div>
         <div class="fx-row"><span class="fx-label">GBP</span><span class="fx-val" id="sf-gbp">—</span></div>
+        <div class="fx-row"><span class="fx-label">CNY</span><span class="fx-val" id="sf-cny">—</span></div>
       </div>
     </div>
   </aside>
@@ -809,6 +810,8 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="form-group"><label>USD 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-usd" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">$</span></div></div>
             <div class="form-group"><label>EUR 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-eur" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">€</span></div></div>
             <div class="form-group"><label>JPY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-jpy" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">¥</span></div></div>
+            <div class="form-group"><label>GBP 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-gbp" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">£</span></div></div>
+            <div class="form-group"><label>CNY 잔액</label><div class="input-with-unit"><input type="text" id="i-fx-cny" placeholder="0" oninput="formatNumericInput(this, true)"><span class="unit">¥₁</span></div></div>
           </div>
           <div class="form-group" style="margin-top:16px;"><label>특이사항</label><textarea id="i-memo" placeholder="비고 입력"></textarea></div>
           <div class="form-actions"><button class="btn btn-success" onclick="saveDaily()">운전자금 저장</button></div>
@@ -826,7 +829,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <tr>
                   <th>일자</th><th>법인</th>
                   <th class="td-num">보통예금</th><th class="td-num">국책</th><th class="td-num">MMDA</th>
-                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th><th>비고</th><th></th>
                 </tr>
               </thead>
@@ -875,7 +878,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div class="form-group" id="v-group-amount">
               <label>통화 / 금액</label>
               <div style="display:flex;gap:10px;">
-                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select>
+                <select id="v-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option><option value="GBP">GBP</option><option value="CNY">CNY</option></select>
                 <input type="text" id="v-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)">
               </div>
             </div>
@@ -948,7 +951,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             </div>
             <div class="form-group"><label>차입처</label><input type="text" id="l-lender" placeholder="예: 하나은행"></div>
             <div class="form-group"><label>구분</label><select id="l-type"><option value="담보대출">담보대출</option><option value="신용대출">신용대출</option><option value="외화대출">외화대출</option><option value="정책자금">정책자금</option></select></div>
-            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
+            <div class="form-group"><label>통화 / 금액</label><div style="display:flex;gap:10px;"><select id="l-currency" style="width:80px;"><option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="JPY">JPY</option><option value="GBP">GBP</option><option value="CNY">CNY</option></select><input type="text" id="l-amount" style="flex:1;" placeholder="0" oninput="formatNumericInput(this, true)"></div></div>
             <div class="form-group"><label>이자율 (%)</label><div class="input-with-unit"><input type="text" id="l-rate" placeholder="4.2" oninput="formatNumericInput(this, true)"><span class="unit">%</span></div></div>
             <div class="form-group"><label>실행일</label><input type="date" id="l-start"></div>
             <div class="form-group"><label>만기일</label><input type="date" id="l-maturity"></div>
@@ -1082,7 +1085,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
                 <tr>
                   <th>일자</th><th>법인</th>
                   <th class="td-num">원화운전</th>
-                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th>
+                  <th class="td-num">USD</th><th class="td-num">EUR</th><th class="td-num">JPY</th><th class="td-num">GBP</th><th class="td-num">CNY</th>
                   <th class="td-num">외화환산</th>
                   <th class="td-num" style="color:var(--green);">운용자금</th>
                   <th class="td-num" style="color:var(--amber);">차입금</th>
@@ -1108,7 +1111,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               </button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
               <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">USD / KRW</div>
               <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-usd">—</div>
@@ -1140,7 +1143,19 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
               <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">GBP / KRW</div>
               <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-gbp">—</div>
               <div style="font-size:12px;color:var(--text3);" id="p-fx-gbp-prev">전일 대비 —</div>
-              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">참고 환율</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-gbp-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-gbp-krw">—</span>
+              </div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;">
+              <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">CNY / KRW</div>
+              <div style="font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:4px;" id="p-fx-cny">—</div>
+              <div style="font-size:12px;color:var(--text3);" id="p-fx-cny-prev">전일 대비 —</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);">
+                보유: <span id="p-cny-amt">—</span><br>
+                환산: <span style="color:var(--green);font-weight:600;" id="p-cny-krw">—</span>
+              </div>
             </div>
           </div>
           <div class="card" style="background:var(--bg3);margin-bottom:0;">
@@ -1509,7 +1524,7 @@ function normalizeRow(table, r) {
   // ── 테이블별 허용 컬럼 화이트리스트 (Supabase 스키마 기준) ──
   const COLUMNS = {
     daily: ['id','company','date','writer','krw_demand','krw_govt','krw_mmda',
-            'fx_usd','fx_eur','fx_jpy','fx_krw','memo'],
+            'fx_usd','fx_eur','fx_jpy','fx_gbp','fx_cny','fx_krw','memo'],
     investments: ['id','company','bank','product','currency','amount','available',
                   'rate','start_date','maturity','active',
                   'bond_name','bond_ticker','bond_qty','bond_price'],
@@ -1596,7 +1611,7 @@ async function initSupabase() {
   }
 }
 
-let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750 }; 
+let FX = { KRW: 1, USD: 1380, EUR: 1500, JPY: 9.2, GBP: 1750, CNY: 190 }; 
 let FX_SOURCE = 'ExchangeRate-API';
 let currentCompany = '셀바스에이아이';
 let mainChartObj = null;
@@ -2160,7 +2175,7 @@ function goto(page) {
 
 async function refreshFX() {
   // 로딩 표시
-  ['usd','eur','jpy'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const el = document.getElementById('sf-'+c);
     if(el) el.textContent = '조회중...';
   });
@@ -2181,7 +2196,8 @@ async function refreshFX() {
             USD: 1 / r.USD,
             EUR: 1 / r.EUR,
             JPY: 1 / r.JPY,
-            GBP: 1 / r.GBP
+            GBP: 1 / r.GBP,
+            CNY: 1 / r.CNY
           };
           success = true;
           FX_SOURCE = 'ExchangeRate-API';
@@ -2204,7 +2220,8 @@ async function refreshFX() {
             USD: k,
             EUR: k / data.rates.EUR,
             JPY: k / data.rates.JPY,
-            GBP: k / data.rates.GBP
+            GBP: k / data.rates.GBP,
+            CNY: k / data.rates.CNY
           };
           success = true;
           FX_SOURCE = 'ExchangeRate-API';
@@ -2225,7 +2242,7 @@ async function refreshFX() {
   // 최종 폴백: 기본값 (어느 API도 실패한 경우)
   if (!success) {
     console.warn('모든 환율 API 실패 — 기본값 적용 (실제 환율과 다를 수 있음)');
-    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748 };
+    FX = { KRW: 1, USD: 1378, EUR: 1492, JPY: 9.21, GBP: 1748, CNY: 190 };
     FX_SOURCE = '기본값(오프라인)';
   }
 
@@ -2234,7 +2251,7 @@ async function refreshFX() {
 }
 
 function updateFXDisplay() {
-  ['usd','eur','jpy','gbp'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const val = FX[c.toUpperCase()];
     const sf = document.getElementById('sf-'+c);
     if(sf) sf.textContent = val ? val.toFixed(2)+'원' : '—';
@@ -3585,6 +3602,8 @@ function loadDailyToForm(date, company) {
   setFmt('i-fx-usd',     r.fx_usd);
   setFmt('i-fx-eur',     r.fx_eur);
   setFmt('i-fx-jpy',     r.fx_jpy);
+  setFmt('i-fx-gbp',     r.fx_gbp || 0);
+  setFmt('i-fx-cny',     r.fx_cny || 0);
 
   // 메모
   const memoEl = document.getElementById('i-memo');
@@ -3628,13 +3647,15 @@ async function saveDaily() {
     fx_usd: parseNum(document.getElementById('i-fx-usd').value),
     fx_eur: parseNum(document.getElementById('i-fx-eur').value),
     fx_jpy: parseNum(document.getElementById('i-fx-jpy').value),
+    fx_gbp: parseNum(document.getElementById('i-fx-gbp').value),
+    fx_cny: parseNum(document.getElementById('i-fx-cny').value),
     loan_krw: l.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
     loan_fx:  l.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
     inv_krw:  i.filter(x=>x.currency==='KRW').reduce((s,x)=>s+x.amount,0),
     inv_fx:   i.filter(x=>x.currency!=='KRW').reduce((s,x)=>s+calcKRW(x.amount,x.currency),0),
     memo: document.getElementById('i-memo').value
   };
-  r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY;
+  r.fx_krw = r.fx_usd*FX.USD + r.fx_eur*FX.EUR + r.fx_jpy*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
 
   const rs = DB.get('daily');
   const existingDaily = rs.find(x => x.date === d && x.company === company);
@@ -3648,7 +3669,7 @@ async function saveDaily() {
   }
 
   showToast('[' + company + '] ' + d + ' 운전자금 저장 완료', 'success');
-  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-memo'].forEach(function(id) {
+  ['i-krw-demand','i-krw-govt','i-krw-mmda','i-fx-usd','i-fx-eur','i-fx-jpy','i-fx-gbp','i-fx-cny','i-memo'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -4241,7 +4262,7 @@ function renderDailyHistory(page) {
   }
 
   if (!pageData.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text3);">입력된 데이터가 없습니다</td></tr>';
     if (pager) pager.innerHTML = '';
     return;
   }
@@ -4256,6 +4277,8 @@ function renderDailyHistory(page) {
       <td class="td-num">${r.fx_usd > 0 ? r.fx_usd.toLocaleString()+'$' : '—'}</td>
       <td class="td-num">${r.fx_eur > 0 ? r.fx_eur.toLocaleString()+'€' : '—'}</td>
       <td class="td-num">${r.fx_jpy > 0 ? r.fx_jpy.toLocaleString()+'¥' : '—'}</td>
+      <td class="td-num">${(r.fx_gbp||0) > 0 ? (r.fx_gbp).toLocaleString()+'£' : '—'}</td>
+      <td class="td-num">${(r.fx_cny||0) > 0 ? (r.fx_cny).toLocaleString()+'¥₁' : '—'}</td>
       <td class="td-num" style="color:var(--accent2);font-weight:600;">${fmtKRW(r.fx_krw||0)}</td>
       <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.memo||''}</td>
       <td>
@@ -4361,13 +4384,15 @@ function renderFXEquivTable() {
     return;
   }
   const rows = [
-    {cur:'USD', sym:'$', amt: latest.fx_usd, rate: FX.USD},
-    {cur:'EUR', sym:'€', amt: latest.fx_eur, rate: FX.EUR},
-    {cur:'JPY', sym:'¥', amt: latest.fx_jpy, rate: FX.JPY},
+    {cur:'USD', sym:'$',  amt: latest.fx_usd, rate: FX.USD},
+    {cur:'EUR', sym:'€',  amt: latest.fx_eur, rate: FX.EUR},
+    {cur:'JPY', sym:'¥',  amt: latest.fx_jpy, rate: FX.JPY},
+    {cur:'GBP', sym:'£',  amt: latest.fx_gbp||0, rate: FX.GBP},
+    {cur:'CNY', sym:'¥₁', amt: latest.fx_cny||0, rate: FX.CNY},
   ].filter(r => r.amt > 0);
 
   // 사이드바 + 환율페이지 보유분 업데이트
-  ['usd','eur','jpy'].forEach(c => {
+  ['usd','eur','jpy','gbp','cny'].forEach(c => {
     const amtEl = document.getElementById('p-'+c+'-amt');
     const krwEl = document.getElementById('p-'+c+'-krw');
     const val   = latest['fx_'+c] || 0;
@@ -5138,7 +5163,7 @@ function filterHistory() {
 
   tbody.innerHTML = records.map(r => {
     const opKrw = r.krw_demand + r.krw_govt + r.krw_mmda;
-    const fxKrw = r.fx_krw || 0;
+    const fxKrw = r.fx_krw || (r.fx_usd||0)*FX.USD + (r.fx_eur||0)*FX.EUR + (r.fx_jpy||0)*FX.JPY + (r.fx_gbp||0)*FX.GBP + (r.fx_cny||0)*FX.CNY;
     const opTotal = opKrw + fxKrw;
 
     // 해당 날짜 기준 운용자금 (active이면서 가입일 ≤ 날짜 ≤ 만기일)
@@ -5168,6 +5193,8 @@ function filterHistory() {
       '<td class="td-num">' + (r.fx_usd > 0 ? r.fx_usd.toLocaleString() + '$' : '—') + '</td>' +
       '<td class="td-num">' + (r.fx_eur > 0 ? r.fx_eur.toLocaleString() + '€' : '—') + '</td>' +
       '<td class="td-num">' + (r.fx_jpy > 0 ? r.fx_jpy.toLocaleString() + '¥' : '—') + '</td>' +
+      '<td class="td-num">' + ((r.fx_gbp||0) > 0 ? (r.fx_gbp).toLocaleString() + '£' : '—') + '</td>' +
+      '<td class="td-num">' + ((r.fx_cny||0) > 0 ? (r.fx_cny).toLocaleString() + '¥₁' : '—') + '</td>' +
       '<td class="td-num" style="color:var(--accent2);">' + fmtKRW(fxKrw) + '</td>' +
       '<td class="td-num" style="color:var(--green);">' + (invTotal > 0 ? fmtKRW(invTotal) : '—') + '</td>' +
       '<td class="td-num" style="color:var(--amber);">' + (loanTotal > 0 ? fmtKRW(loanTotal) : '—') + '</td>' +
