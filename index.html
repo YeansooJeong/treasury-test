@@ -9,7 +9,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Selvas Treasury [TEST]</title>
+<title>[TEST] Selvas Treasury</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
 
@@ -377,12 +377,11 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
 </style>
 </head>
 <body>
-<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:5px;letter-spacing:0.03em;">
-  ⚠ 테스트 환경 — 운영 데이터와 분리 | TEST-MASTER-2026 / TEST-AI/HC/MD-2026
+<!-- ⚠ 테스트 환경 배너 -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:5px;letter-spacing:0.03em;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+  ⚠ 테스트 환경 | TEST-MASTER-2026 / TEST-CEO-2026 / TEST-AI/HC/MD-2026
 </div>
-<div style="height:26px;"></div>
-
-
+<div style="height:27px;"></div>
 
 <!-- 코드 변경 모달 -->
 <div id="code-change-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;align-items:center;justify-content:center;">
@@ -478,7 +477,7 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="co" onclick="goto('dashboard')">SELVAS</div>
-      <div class="name">Treasury</div>
+      <div class="name">Treasury <span style="color:var(--amber);font-size:10px;font-weight:700;background:rgba(245,158,11,0.2);padding:1px 5px;border-radius:3px;">TEST</span></div>
       <div id="sidebar-badge-area"><img src="selvasai.png" alt="Selvas AI" onerror="this.style.display='none'"></div>
     </div>
 
@@ -2061,7 +2060,8 @@ function goto(page) {
   // 사이드바 해당 항목 활성화
   const navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(n => {
-    if(n.getAttribute('onclick').includes(`goto('${page}')`)) {
+    const oc = n.getAttribute('onclick');
+    if(oc && oc.includes(`goto('${page}')`)) {
         n.classList.add('active');
         document.getElementById('page-title').textContent = n.textContent.trim();
     }
