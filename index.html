@@ -1272,10 +1272,16 @@ if (location.protocol === 'http:' && location.hostname !== 'localhost' && locati
             <div id="migration-status" style="font-size:12px;color:var(--text3);margin-top:10px;min-height:18px;"></div>
           </div>
           <div class="card">
-            <div class="card-title">⏰ 자동 백업 설정</div>
-            <p style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;">매 영업일(월~금) <b>오전 11시 59분</b>에 자동으로 JSON 백업 파일을 다운로드합니다.<br>브라우저 탭이 열려있어야 동작합니다.</p>
-            <button class="btn btn-ghost" onclick="manualBackupNow()" style="width:100%;font-size:12px;margin-bottom:6px;">지금 즉시 백업 실행</button>
-            <div style="font-size:11px;color:var(--text3);">마지막 자동백업: <span id="last-backup-info">—</span></div>
+            <div class="card-title">☁ 클라우드 백업 (Supabase Storage)</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;">
+              매 영업일(월~금) <b>23:59(KST)</b>에 서버에서 자동 백업됩니다.<br>
+              아래 버튼으로 지금 즉시 클라우드에 백업본을 생성할 수 있습니다.
+            </p>
+            <button class="btn btn-primary" onclick="triggerCloudBackup()"
+              style="width:100%;font-size:12px;margin-bottom:6px;background:rgba(139,92,246,0.8);border-color:rgba(139,92,246,0.5);">
+              ☁ 클라우드 수동 백업 실행
+            </button>
+            <div id="cloud-backup-status" style="font-size:11px;color:var(--text3);min-height:16px;"></div>
           </div>
           <div class="card">
             <div class="card-title">↓ JSON 전체 백업</div>
@@ -1714,13 +1720,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target === this) closeCodeModal();
   });
 
-  // 자동 백업 스케줄러 시작
-  startAutoBackupScheduler();
-
-  // 마지막 백업일 표시
-  const lastBackup = localStorage.getItem('selvas_last_backup_date');
-  const el = document.getElementById('last-backup-info');
-  if (el) el.textContent = lastBackup || '없음';
+  // 자동 백업: Supabase Edge Function + pg_cron 서버 스케줄러로 대체
 });
 
 // ── 코드 강도 표시 ─────────────────────────────────────────────
@@ -3054,6 +3054,51 @@ async function migrateLocalToSupabase() {
 
   // 화면 갱신
   renderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 클라우드 백업 트리거 — Supabase Edge Function 호출
+// 함수명: treasury-backup (Supabase > Edge Functions에 배포 필요)
+// ══════════════════════════════════════════════════════════════
+async function triggerCloudBackup() {
+  const statusEl = document.getElementById('cloud-backup-status');
+  if (statusEl) { statusEl.textContent = '☁ 백업 요청 중...'; statusEl.style.color = 'var(--text3)'; }
+
+  try {
+    // Edge Function URL: Supabase 프로젝트 URL + /functions/v1/treasury-backup
+    const edgeFnUrl = SUPABASE_URL + '/functions/v1/treasury-backup'; // 테스트 환경
+    const res = await fetch(edgeFnUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ manual: true }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + errText.slice(0, 100));
+    }
+
+    const result = await res.json();
+    const fileName = result.fileName || '백업 완료';
+
+    if (statusEl) {
+      statusEl.textContent = '✅ 클라우드 백업 완료 — ' + fileName;
+      statusEl.style.color = 'var(--green)';
+    }
+    showToast('☁ 클라우드 백업 완료: ' + fileName, 'success');
+    console.log('[클라우드백업] 완료:', result);
+
+  } catch(e) {
+    console.error('[클라우드백업] 실패:', e);
+    if (statusEl) {
+      statusEl.textContent = '❌ 백업 실패: ' + e.message;
+      statusEl.style.color = 'var(--red)';
+    }
+    showToast('☁ 클라우드 백업 실패 — F12 콘솔 확인', 'error');
+  }
 }
 
 // JSON 백업 (전체 다운로드)
@@ -4992,59 +5037,11 @@ function loadEquityHistoryToForm(id) {
 // ══════════════════════════════════════════════════════════════
 // S-04: 자동 백업 스케줄러 (매 영업일 11:59)
 // ══════════════════════════════════════════════════════════════
-function startAutoBackupScheduler() {
-  // 1분마다 시각 체크
-  setInterval(async function() {
-    const now = new Date();
-    const h = now.getHours(), m = now.getMinutes();
-    const dow = now.getDay(); // 0=일, 6=토
-    const today = now.toISOString().slice(0,10);
-    const lastBackup = localStorage.getItem('selvas_last_backup_date');
+// startAutoBackupScheduler: Supabase pg_cron으로 대체
 
-    // 평일(1~5) + 11:59 + 오늘 아직 백업 안 함
-    if (dow >= 1 && dow <= 5 && h === 11 && m === 59 && lastBackup !== today) {
-      await runAutoBackup(today);
-    }
-  }, 60000);
-}
+// runAutoBackup: Supabase Edge Function(treasury-backup)으로 대체
 
-async function runAutoBackup(today) {
-  try {
-    // 최신 데이터 로드
-    for (const t of ['daily','investments','loans','equities','price_history']) {
-      await DB.load(t).catch(() => {});
-    }
-    const data = {};
-    ['daily','investments','loans','equities','price_history'].forEach(k => { data[k] = DB.get(k); });
-    data._exported_at  = new Date().toISOString();
-    data._version      = '1.0';
-    data._backup_type  = 'auto';
 
-    const dateStr = (today || new Date().toISOString().slice(0,10)).replace(/-/g,'');
-    const timeStr = new Date().toTimeString().slice(0,5).replace(':','');
-    const fileName = 'selvas_backup_' + dateStr + '_' + timeStr + '.json';
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = fileName; a.click();
-    URL.revokeObjectURL(url);
-
-    localStorage.setItem('selvas_last_backup_date', today || new Date().toISOString().slice(0,10));
-    showToast('☁ 자동 백업 완료 — ' + fileName, 'success');
-    console.log('[자동백업] 완료:', fileName);
-  } catch(e) {
-    console.error('[자동백업] 실패:', e);
-  }
-}
-
-// 수동 즉시 백업 (데이터 관리 페이지에서 호출)
-async function manualBackupNow() {
-  const today = new Date().toISOString().slice(0,10);
-  await runAutoBackup(today);
-  // 수동 실행은 날짜 기록 갱신 안 함 (자동 백업과 별개)
-  localStorage.removeItem('selvas_last_backup_date');
-}
 
 async function adminCheckStatus() {
   const el = document.getElementById('sb-status-detail');
